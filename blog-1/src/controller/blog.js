@@ -1,5 +1,5 @@
-const { exec } = require("../db/mysql");
-
+const { exec } = require('../db/mysql');
+const xss = require('xss');
 const getList = (author, keyword) => {
   //先返回假数据，格式是正确的
   // return [
@@ -26,12 +26,12 @@ const getList = (author, keyword) => {
   if (keyword) {
     sql += `and title like '%${keyword}%' `;
   }
-  sql += "order by createtime desc";
+  sql += 'order by createtime desc';
 
   return exec(sql);
 };
 
-const getDetail = (id) => {
+const getDetail = id => {
   // return {
   //   id: 1,
   //   title: "标题A",
@@ -40,14 +40,14 @@ const getDetail = (id) => {
   //   author: "zhangsan",
   // };
   const sql = `select * from blogs where id='${id}'`;
-  return exec(sql).then((rows) => {
+  return exec(sql).then(rows => {
     return rows[0];
   });
 };
 
 const newBlog = (blogData = {}) => {
-  console.log("blogData", blogData);
-  const title = blogData.title;
+  console.log('blogData', blogData);
+  const title = xss(blogData.title);
   const content = blogData.content;
   const author = blogData.author;
   const createtime = Date.now();
@@ -56,23 +56,23 @@ const newBlog = (blogData = {}) => {
   // return {
   //   id: 3,
   // };
-  return exec(sql).then((insertData) => {
-    console.log("insertData", insertData);
+  return exec(sql).then(insertData => {
+    console.log('insertData', insertData);
     return {
-      id: insertData.insertId,
+      id: insertData.insertId
     };
   });
 };
 
 const updateBlog = (id, blogData = {}) => {
-  console.log("update blog", id, blogData);
+  console.log('update blog', id, blogData);
   // return true;
 
   const title = blogData.title;
   const content = blogData.content;
   const sql = `update blogs set title='${title}', content='${content}' where id='${id}'`;
 
-  return exec(sql).then((updateData) => {
+  return exec(sql).then(updateData => {
     if (updateData.affectedRows > 0) {
       return true;
     } else {
@@ -85,7 +85,7 @@ const delBlog = (id, author) => {
   // return true;
   const sql = `delete from blogs where id = '${id}' and author='${author}'`;
 
-  return exec(sql).then((deleteData) => {
+  return exec(sql).then(deleteData => {
     if (deleteData.affectedRows > 0) {
       return true;
     } else {
@@ -99,5 +99,5 @@ module.exports = {
   getDetail,
   newBlog,
   updateBlog,
-  delBlog,
+  delBlog
 };

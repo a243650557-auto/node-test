@@ -1,7 +1,8 @@
-const querystring = require("querystring");
-const handleUserRouter = require("./src/router/user");
-const handleBlogRouter = require("./src/router/blog");
-const { get, set } = require("./src/db/redis");
+const querystring = require('querystring');
+const handleUserRouter = require('./src/router/user');
+const handleBlogRouter = require('./src/router/blog');
+const { get, set } = require('./src/db/redis');
+const { access } = require('./src/utils/log.js');
 //session数据
 // let SESSION_DATA = {};
 
@@ -11,22 +12,22 @@ const getCookieExpires = () => {
   d.setTime(d.getTime() + 24 * 60 * 60 * 1000);
   return d.toGMTString();
 };
-const getPostData = (req) => {
+const getPostData = req => {
   const promise = new Promise((resolve, reject) => {
-    if (req.method !== "POST") {
+    if (req.method !== 'POST') {
       resolve({});
       return;
     }
-    if (req.headers["content-type"] !== "application/json") {
+    if (req.headers['content-type'] !== 'application/json') {
       resolve({});
       return;
     }
 
-    let postData = "";
-    req.on("data", (chunk) => {
+    let postData = '';
+    req.on('data', chunk => {
       postData += chunk.toString();
     });
-    req.on("end", () => {
+    req.on('end', () => {
       if (!postData) {
         resolve({});
         return;
@@ -38,30 +39,37 @@ const getPostData = (req) => {
 };
 
 const serverHandle = (req, res) => {
-  res.setHeader("Content-type", "application/json");
+  //记录access log
+  access(
+    `${req.method} -- ${req.url} -- ${
+      req.headers['user-agent']
+    } -- ${Date.now()}`
+  );
+
+  res.setHeader('Content-type', 'application/json');
 
   const resData = {
-    name: "sju",
-    site: "imooc",
+    name: 'sju',
+    site: 'imooc'
   };
 
   const url = req.url;
-  req.path = url.split("?")[0];
+  req.path = url.split('?')[0];
 
   //解析cookie
   req.cookie = {};
-  const cookieStr = req.headers.cookie || ""; //k1=v1;k2=v2
-  cookieStr.split(";").forEach((item) => {
+  const cookieStr = req.headers.cookie || ''; //k1=v1;k2=v2
+  cookieStr.split(';').forEach(item => {
     if (!item) {
       return;
     }
-    const arr = item.split("=");
+    const arr = item.split('=');
     const key = arr[0];
     const val = arr[1];
     req.cookie[key] = val;
   });
-  console.log("req.cookie", req.cookie);
-  console.log("req.session", req.session);
+  console.log('req.cookie', req.cookie);
+  console.log('req.session', req.session);
 
   //解析session
   // let needSetCookie = false;
@@ -90,30 +98,30 @@ const serverHandle = (req, res) => {
     //初始化session
     set(userId, {});
   }
-  req.query = querystring.parse(url.split("?")[1]);
+  req.query = querystring.parse(url.split('?')[1]);
   //获取session
   req.sessionId = userId;
   get(req.sessionId)
-    .then((sessionData) => {
+    .then(sessionData => {
       if (sessionData == null) {
         set(req.sessionId, {});
         req.session = {};
       } else {
         req.session = sessionData;
       }
-      console.log("req.session", req.session);
+      console.log('req.session', req.session);
 
       return getPostData(req);
     })
-    .then((postData) => {
+    .then(postData => {
       req.body = postData;
 
       const blogResult = handleBlogRouter(req, res);
       if (blogResult) {
-        blogResult.then((blogData) => {
+        blogResult.then(blogData => {
           if (needSetCookie) {
             res.setHeader(
-              "Set-cookie",
+              'Set-cookie',
               `userid=${userId};path=/;httpOnly;expires=${getCookieExpires()}`
             );
           }
@@ -141,10 +149,10 @@ const serverHandle = (req, res) => {
 
       const userResult = handleUserRouter(req, res);
       if (userResult) {
-        userResult.then((userData) => {
+        userResult.then(userData => {
           if (needSetCookie) {
             res.setHeader(
-              "Set-cookie",
+              'Set-cookie',
               `userid=${userId};path=/;httpOnly;expires=${getCookieExpires()}`
             );
           }
@@ -155,9 +163,9 @@ const serverHandle = (req, res) => {
       }
       //未命中路由，返回404
       res.writeHead(404, {
-        "content-type": "text-plain",
+        'content-type': 'text-plain'
       });
-      res.write("404 not found");
+      res.write('404 not found');
       res.end();
     });
 };
